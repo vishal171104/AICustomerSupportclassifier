@@ -503,3 +503,53 @@ ticket_id,description,category,priority
 502,CRITICAL: Getting a generic error in the settings area. This happened after my last login. Production is impacted.,Technical,Critical
 503,The dashboard is degraded. I was trying to upload data but it just returns an error. Sent from my iPhone.,Technical,Critical
 504,Maybe later: The add-on process did not behave as expected and higher than expected. Sent from my iPhone.,Billing,Low
+505,Where can I find my transaction history for the last 3 years?,Billing,Low
+506,"I cannot reset my password, the 'Forgot Password' link is broken.",Account,High
+507,My account was breached and my email was changed.,Account,Critical
+508,Update my legal name and address in the business profile.,Account,Low
+509,How do I change my currency settings to USD?,Billing,Low
+510,My account is locked due to an outstanding balance I already paid.,Billing,Critical
+511,Feature X is not working after the latest system update.,Technical,High
+512,CSS elements are overlapping on the mobile view of the dashboard.,Technical,Low
+513,"Account suspended for no apparent reason, please investigate.",Account,Critical
+514,Requesting a refund for the service I cancelled last month.,Billing,Medium
+515,Unauthorized login attempt detected from an unknown location.,Account,High
+516,Applied a promo code but the discount is not reflected in the total.,Billing,Medium
+517,The VAT amount on my receipt seems incorrectly calculated.,Billing,Medium
+518,Double charge on my invoice INV-9902.,Billing,High
+519,The export to PDF function is generating blank documents.,Technical,Medium
+520,Permission denied error when I try to access the settings panel.,Account,Medium
+521,I am unable to change my primary email address.,Account,High
+522,I was overcharged for the premium tier features.,Billing,High
+523,The mobile app crashes every time I open the analytics tab.,Technical,High
+524,Need a copy of my yearly tax statement for the previous fiscal year.,Billing,Low
+525,Real-time notifications are delayed by several minutes.,Technical,Medium
+526,API documentation link is returning a 404 page not found.,Technical,Low
+527,Dark mode is causing readability issues on the reports page.,Technical,Low
+528,Auto-save is not working in the text editor component.,Technical,Medium
+529,Broken links in the help center articles need fixing.,Technical,Low
+530,The session keeps logging me out every 5 minutes.,Account,Medium
+531,Inconsistent pricing between the mobile app and the website.,Billing,Low
+532,Unrecognized charge from your company on my bank statement.,Billing,Critical
+533,My profile picture upload keeps failing with a size error.,Account,Low
+534,How do I delete my account permanently and remove all data?,Account,Medium
+535,Can I change my username or is it permanent once created?,Account,Low
+536,The webhook is not triggering when a new order is placed.,Technical,High
+537,"The autopay feature is not working as expected, had to pay manually.",Billing,Medium
+538,The subscription price increased without prior notification.,Billing,Medium
+539,The dashboard doesn't load on Safari browser.,Technical,High
+540,Image compression is making the uploaded photos look blurry.,Technical,Low
+541,Cannot update my credit card details on the billing portal.,Billing,High
+542,Integration with Slack is failing with an invalid token error.,Technical,High
+543,Verification email is not being received in the inbox or spam.,Account,High
+544,Need to merge two accounts under the same business email.,Account,Medium
+545,My payment was declined but my bank says it went through.,Billing,High
+546,Database connection refused when trying to sync large datasets.,Technical,Critical
+547,The two-factor authentication code is not arriving on my phone.,Account,Critical
+548,Server side error 500 when adding new items to the inventory.,Technical,Critical
+549,My organization members cannot access the shared workspace.,Account,High
+550,The SSL certificate for our custom domain has expired.,Technical,Critical
+551,The website is loading very slowly in the European region.,Technical,Medium
+552,Search results are not refreshing when I apply new filters.,Technical,Low
+553,Received an invoice for a service that was supposed to be free trial.,Billing,Medium
+554,System latency is too high during the morning peak hours.,Technical,Medium
