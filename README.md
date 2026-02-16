@@ -1,7 +1,7 @@
 # AI Ticket Triage System 🎓
 [ **Institutional Grade ML Research Project** ]
 
-An automated customer support triage system using hardened classical ML pipelines (SVM + Naive Bayes) with a full observability stack and research-grade dashboard.
+An automated customer support triage system using hardened classical ML pipelines (SVM + Naive Bayes) with a full observability stack .
 
 ## 🌐 Live System
 [🔥 Interactive Research Dashboard](http://localhost:8501) | [📚 API Documentation](http://localhost:8000/docs)
