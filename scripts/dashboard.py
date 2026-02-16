@@ -86,7 +86,7 @@ with tab1:
         'Best Model': ['Naive Bayes', 'Linear SVM'],
         'CV Accuracy': ['96.5 ± 6.9%', '51.6 ± 5.4%'],
         'vs Baseline': ['2.9x Lift', '2.1x Lift']
-    }), use_container_width=True)
+    }), width='stretch')
     st.info("Validation strategy: 5-Fold Stratified Cross-Validation")
 
 with tab2:
@@ -96,7 +96,7 @@ with tab2:
         'Component': ['Feature: N-gram (1,1)', 'Preprocessing: Stopwords', 'Model: SVM Kernel'],
         'Accuracy Contribution': ['51.4%', 'ON (40.5%)', 'linear (40.5%)'],
         'Status': ['Optimal', 'Optimal', 'Selected']
-    }), use_container_width=True)
+    }), width='stretch')
     st.caption("Ablative testing performed across 12 hyperparameter permutations.")
 
 with tab3:
@@ -105,7 +105,7 @@ with tab3:
         'Error Pattern': ['OOV / Technical Jargon', 'Negation / Context Loss', 'Keyword Traps', 'Low Confidence Noise'],
         'Count': [21, 15, 4, 3],
         '% Total Errors': ['44%', '31%', '8%', '6%']
-    }), use_container_width=True)
+    }), width='stretch')
     st.error("🎯 Analysis: 75% of misclassifications arise from semantic ambiguity and negation.")
 
 with tab4:
@@ -125,7 +125,7 @@ with tab4:
         conn.close()
         if not df_logs.empty:
             st.markdown("##### Recent Audit Trail (Last 20)")
-            st.dataframe(df_logs, use_container_width=True)
+            st.dataframe(df_logs, width='stretch')
         else:
             st.caption("No live logs captured yet.")
     else:
