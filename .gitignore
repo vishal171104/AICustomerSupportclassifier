@@ -48,3 +48,5 @@ results_transformer/
 reports/*.png
 test_results.txt
 model/*.pkl
+venv_prod/
+data/predictions.db

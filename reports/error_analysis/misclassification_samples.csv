@@ -1,0 +1,11 @@
+Text,Actual,Predicted,Confidence,Error_Type
+feature x is not working after the latest system update,High,Medium,0.6900253920797574,Negation/Context Loss
+question getting a generic error in the main view this happened after my last login its a critical blocker hope youre having a good day sent from my iphone,Medium,High,0.6618727324335795,Miscellaneous / Out-of-vocab
+critical getting a generic error in the settings area this happened after my last login production is impacted,Critical,High,0.6147628906354324,Miscellaneous / Out-of-vocab
+the subscription price increased without prior notification,Medium,High,0.6011519452065539,Negation/Context Loss
+my login information is showing as inactive also the navigation layer feels showing inconsistencies best regards,Critical,Medium,0.5826857381994406,Miscellaneous / Out-of-vocab
+the mobile app crashes every time i open the analytics tab,High,Low,0.5811540031899745,Miscellaneous / Out-of-vocab
+i was expecting a email notification but i received a notification about flagged urgent attntion needed sorry for the trouble thanks for the help,Low,High,0.5623918641238502,Keyword Trap (Sarcastic/Minor 'Urgent')
+the saml settings are behaving unexpectedly i need to review my login information urgent attention needed,Low,Critical,0.5565969654880137,Keyword Trap (Sarcastic/Minor 'Urgent')
+my profile picture upload keeps failing with a size error,Low,Critical,0.5548143137377188,Miscellaneous / Out-of-vocab
+now the summary from yesterday seems not what i agreed to i checked the card info and it looks okay thanks for the help,Critical,Low,0.5506963575921833,Negation/Context Loss

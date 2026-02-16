@@ -1,0 +1,4 @@
+Component,"(1, 1)","(1, 2)","(1, 3)",OFF,ON,linear,poly,rbf
+N-gram Range,0.5135,0.4054,0.3604,,,,,
+SVM Kernel,,,,,,0.4054,0.3153,0.3604
+Stopwords,,,,0.3964,0.4054,,,

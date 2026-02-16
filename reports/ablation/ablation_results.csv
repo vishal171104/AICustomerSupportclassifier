@@ -1,0 +1,9 @@
+Component,Variant,Accuracy
+N-gram Range,"(1, 1)",0.5135
+N-gram Range,"(1, 2)",0.4054
+N-gram Range,"(1, 3)",0.3604
+Stopwords,OFF,0.3964
+Stopwords,ON,0.4054
+SVM Kernel,linear,0.4054
+SVM Kernel,rbf,0.3604
+SVM Kernel,poly,0.3153

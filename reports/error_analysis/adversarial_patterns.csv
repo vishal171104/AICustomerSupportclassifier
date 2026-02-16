@@ -1,0 +1,5 @@
+Adversarial_Input,Prediction,Confidence
+THIS IS URGENT BUT ACTUALLY FINE,High,0.606285483391405
+system working well but login button is green instead of blue,High,0.5027149521328178
+i will cancel my subscription if this is not fixed in 5 minutes,High,0.513935144885518
+p ay m e n t is fail ing,Low,0.3170173979279359

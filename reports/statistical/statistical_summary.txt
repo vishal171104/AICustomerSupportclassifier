@@ -1,0 +1,4 @@
+Confidence Intervals for Accuracy (1000 iterations):
+Lower Bound (2.5%): 0.4865
+Upper Bound (97.5%): 0.6757
+Mean: 0.5766

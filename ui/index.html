@@ -329,6 +329,12 @@
                     <div class="stat-value" style="color: var(--accent)">~67.4%</div>
                 </div>
             </div>
+            <div style="margin-top: 15px;">
+                <a href="http://localhost:8000/dashboard" target="_blank" class="demo-btn"
+                    style="text-decoration: none; background: #f1f5f9;">📊 View Observability Dashboard</a>
+                <a href="http://localhost:8000/metrics" target="_blank" class="demo-btn"
+                    style="text-decoration: none; background: #f1f5f9;">📈 Prometheus Metrics</a>
+            </div>
         </header>
 
         <!-- 2. Input Section -->
@@ -368,6 +374,9 @@
                     </div>
                     <div id="priConf" class="interpretation"></div>
                 </div>
+            </div>
+            <div style="text-align: right; font-size: 0.75rem; color: var(--text-muted); margin-top: -10px;">
+                Backend processing time: <span id="latencyVal">0</span>ms
             </div>
 
             <!-- 4. Explainability -->
@@ -427,6 +436,8 @@
 
         <script>
             const API_URL = "http://localhost:8000/predict";
+            const DASHBOARD_URL = "http://localhost:8000/dashboard";
+            const METRICS_URL = "http://localhost:8000/metrics";
 
             const demoData = {
                 'Critical Production Issue': "CRITICAL: The payment gateway is returning 500 errors for all users. Production is down and customers cannot checkout. Blocked since 9am.",
@@ -515,6 +526,9 @@
                 priBar.style.backgroundColor = getConfColor(data.priority_confidence);
                 document.getElementById('priConf').innerText = getConfText(data.priority_confidence);
                 document.getElementById('priConf').style.color = getConfColor(data.priority_confidence);
+
+                // Latency
+                document.getElementById('latencyVal').innerText = data.latency_ms;
 
                 // Keywords
                 const kwList = document.getElementById('keywordsList');
