@@ -66,4 +66,9 @@ Send a POST request to `/predict` with a JSON body:
 ## Constraints & Notes
 - This system uses optimized classical models for efficiency and interpretability.
 - Deep Learning (BERT, etc.) is included as a comparative benchmark but classical models are prioritized for production stability.
-- No production deployment is claimed.
+- No production deployment 
+
+
+https://github.com/user-attachments/assets/d16e4534-9438-4d7e-bdb6-e177661bb362
+
+is claimed.
