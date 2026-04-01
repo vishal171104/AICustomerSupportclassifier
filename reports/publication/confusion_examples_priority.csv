@@ -1,0 +1,25 @@
+Actual,Predicted,Confidence,Text (first 120 chars)
+Critical,High,0.727,Internal server error in the profile panel. System is down. Production is impacted.
+Critical,High,0.551,Internal server error profile panel blocking all users. Production down since weekend.
+High,Low,0.55,Important: The MFA settings are degraded. I need to check my security settings. Production is impacted.
+Medium,High,0.528,Why is there a discrepancy in the latest charge? It says INV-202 but the amount is different. Need this fixed soon.
+Low,Critical,0.525,Why is there a discrepancy in the invoice? It says INV-202 but the amount is different. It's a critical blocker. Best re
+Medium,Low,0.507,i was expecting email notification received notification about not going through medium billing
+High,Low,0.499,The latets charge from the last update seems higher than expected. I checked the address and it looks okay. Sorry for th
+High,Critical,0.487,The view logs level is insufficient for my contact email. It keeps hangs. Thanks for the help.
+Low,Medium,0.484,The dashboard is degraded. I was trying to submit but it just glitches. Sorry for the trouble.
+Medium,High,0.483,Rotine: The item is not appearing as expected in the module. Can you check the mobile device logs? Need this fixed soon.
+Medium,Critical,0.464,Query: There is a stops working when I access the feature. This is preventing progress. Sent from my client app.
+High,Medium,0.463,Urgent: The item is not appearing as expected in the module. Can you check the web browser logs? This is blocking my wor
+Low,Critical,0.463,Suggestion My account was flagged last night. I also have a question about contact email. Sorry for the trouble.
+Critical,Medium,0.461,Getting a status code 500 in the main view. This happened after the last update. Need this fixed soon.
+Medium,Low,0.457,Update: The system is not loading properly. I was trying to upload data but it just hangs. Sorry for the trouble.
+High,Medium,0.456,The entry is not appearing as expected in the dashboard. Can you check the desktop logs? Production is mpacted.
+Low,Medium,0.45,I was expecting a email notification but I received a notification about not going through. This is blocking my work.
+Critical,Low,0.445,IMMEDIATELY: There is a glitches when I access the feature. This is very annoying. Sent from my client app.
+Low,High,0.445,FYI: Why is there a discrepancy in the summary? It says INV-202 but the amount is different. Need this fixed soon.
+Medium,Critical,0.437,My account was denied last night. I also have a question about security settings. Sorry for the trouble.
+Low,High,0.437,The update profile leevl is insufficient for my login information. It keeps hangs. Sorry for the trouble. Best regards. 
+Critical,Medium,0.435,The dashboard is behaving unexpectedly. I was trying to submit but it just glitches. Hope you're having a good day. Best
+High,Critical,0.434,My transfer was stuck last night. I also have a question about security settings. Sorry for the trouble.
+Critical,Low,0.415,password credentials failing when changing account settings cannot update anything critical blocker

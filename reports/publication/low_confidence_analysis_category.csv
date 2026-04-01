@@ -1,0 +1,5 @@
+Conf < Threshold,Tickets in Bucket,Errors in Bucket,Error Rate
+0.5,8,1,12.5%
+0.6,38,1,2.6%
+0.7,98,2,2.0%
+0.8,214,2,0.9%

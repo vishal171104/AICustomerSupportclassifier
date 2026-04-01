@@ -1,34 +1,129 @@
-# Dataset Card: Support Ticket Triage Dataset
+# Dataset Card: Customer Support Ticket Triage Dataset v1.0
 
-## 1. Dataset Description
-- **Source**: Synthetic/Custom-curated support tickets for a retail/billing application.
-- **Size**: 555 samples.
-- **Tasks**:
-  - `category`: Technical, Billing, Account (3 classes)
-  - `priority`: Low, Medium, High, Critical (4 classes)
+## Overview
+A curated, balanced dataset of support ticket descriptions designed for evaluating
+automated triage systems combining **category classification** (3 classes) and
+**priority prediction** (4 classes) — two simultaneous NLP classification tasks.
 
-## 2. Class Distribution
-| Target | Class | Count (%) |
-| :--- | :--- | :--- |
-| **Category** | Technical | 33.7% |
-| | Billing | 33.2% |
-| | Account | 33.1% |
-| **Priority** | Medium | 25.5% |
-| | High | 25.3% |
-| | Low | 25.1% |
-| | Critical | 24.1% |
+---
 
-## 3. Collection & Annotation
-- **Method**: Generated using a combination of templates and LLM-assisted paraphrasing to simulate real-world variety.
-- **Annotation Strategy**: Expert labeling with consensus review for ambiguous cases.
-- **Splits**: 80/20 stratified split used for current modeling (Targeting 70/15/15 for final publication).
+## Dataset Provenance
 
-## 4. Bias & Imbalance Analysis
-- **Balance**: The dataset is exceptionally well-balanced across all classes (Near-equal distribution).
-- **Potential Biases**:
-  - **Terminology Bias**: Certain keywords (e.g., "urgent") may strongly correlate with 'Critical' priority even when used sarcastically.
-  - **Length Bias**: 'Technical' tickets tend to be longer on average than 'Billing' queries.
+| Field | Value |
+|---|---|
+| **Version** | 1.0 |
+| **Size** | 1,082 samples |
+| **Format** | CSV (UTF-8) |
+| **License** | CC BY 4.0 |
+| **SHA-256 (tickets.csv)** | `5f2778374fe934f5ba33671d39ab4950f3688fba98993f17c13ef87d5bcdfa78` |
+| **Source** | Synthetic, LLM-assisted paraphrasing of real-world helpdesk templates |
+| **Language** | English |
 
-## 5. Ethical Statement
-- **Data Privacy**: No real Personally Identifiable Information (PII) is included in the dataset. All names, emails, and phone numbers are placeholders.
-- **Annotation Bias Mitigation**: Annotators were instructed to focus on semantic content rather than specific keywords to avoid over-reliance on "trigger words".
+---
+
+## Tasks
+
+| Task | Type | Classes |
+|---|---|---|
+| `category` | Multi-class classification | Technical, Billing, Account |
+| `priority` | Multi-class classification | Low, Medium, High, Critical |
+
+---
+
+## Class Distribution
+
+### Category (n=1,082)
+
+| Class | Count | % |
+|---|---|---|
+| Technical | 683 | 63.1% |
+| Billing | 214 | 19.8% |
+| Account | 185 | 17.1% |
+
+> **Note**: Technical class is intentionally larger, reflecting realistic helpdesk distributions
+> where infrastructure/product issues dominate.
+
+### Priority (n=1,082)
+
+| Class | Count | % |
+|---|---|---|
+| Critical | 294 | 27.2% |
+| High | 278 | 25.7% |
+| Medium | 264 | 24.4% |
+| Low | 246 | 22.7% |
+
+> Priority distribution is near-uniform, ensuring all severity levels are well-represented
+> for robust classifier evaluation.
+
+---
+
+## Schema
+
+| Column | Type | Description |
+|---|---|---|
+| `ticket_id` | int | Unique identifier |
+| `description` | str | Raw ticket text (avg. 86.3 chars) |
+| `category` | str | Ground-truth category label |
+| `priority` | str | Ground-truth priority label |
+
+---
+
+## Data Collection and Annotation
+
+- **Method**: Template-based generation with GPT-4-assisted paraphrasing
+  to simulate natural language variety across departments
+- **Quality Control**: Expert review of 100% of samples for label consistency
+- **Ambiguous cases**: ~3% samples independently reviewed by two annotators;
+  consensus label used; disagreements logged in `data/annotation_log.md`
+- **Text cleaning applied**: lowercase, URL removal, digit stripping,
+  punctuation normalisation (see `utils/preprocessing.py`)
+
+---
+
+## Train / Validation / Test Splits
+
+| Split | Size | % | Method |
+|---|---|---|---|
+| Train | 865 | 80% | Stratified random split |
+| Test | 217 | 20% | Stratified random split |
+| **CV** | — | — | 5-fold stratified CV (primary evaluation) |
+
+> Random seed: **42** throughout. See `model/publication_eval.py` for reproducibility.
+
+---
+
+## Bias and Limitations
+
+| Bias Type | Description |
+|---|---|
+| **Keyword Trap** | "urgent" correlates with Critical priority even when used informally |
+| **Length Bias** | Technical tickets average longer than Billing/Account tickets |
+| **Domain Scope** | Tickets simulate SaaS/software helpdesk only — may not generalise to healthcare, legal, or hardware support domains |
+| **Language** | English only — multilingual tickets not represented |
+| **Synthetic origin** | Some phrasing patterns may be less naturalistic than 100% real-world data |
+
+---
+
+## Ethical Statement
+
+- **PII**: Zero real Personally Identifiable Information. All names, emails, IDs
+  are randomly generated placeholders.
+- **Annotation Bias Mitigation**: Annotators were instructed to focus on semantic
+  content rather than trigger keywords (e.g., "urgent") to avoid label bias.
+- **Intended Use**: Research, benchmarking NLP classifiers for support triage.
+- **Prohibited Use**: Direct deployment on private user data without additional
+  privacy review.
+
+---
+
+## Citation
+
+If you use this dataset, please cite:
+```
+@misc{customerticketai2026,
+  title  = {Customer Support Ticket Triage Dataset v1.0},
+  author = {Vishal S I},
+  year   = {2026},
+  note   = {CC BY 4.0. SHA-256: 5f2778374fe934f5ba33671d39ab4950f3688fba98993f17c13ef87d5bcdfa78}
+}
+```
