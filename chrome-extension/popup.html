@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>TicketIQ</title>
+    <style>
+        body {
+            width: 300px;
+            height: 400px;
+            margin: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 15px;
+            border-bottom: 1px solid #1e293b;
+            text-align: center;
+            background: #1e293b;
+        }
+
+        .content {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #4f46e5;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn:disabled:hover {
+            background: #6366f1;
+        }
+
+        .status-box {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 8px;
+            width: 100%;
+            text-align: center;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            border: 1px solid #334155;
+        }
+
+        .toast {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: #22c55e;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 13px;
+            display: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            font-weight: 500;
+        }
+
+        .config-warning {
+            color: #ef4444;
+            font-size: 13px;
+            text-align: center;
+            margin-top: 10px;
+            display: none;
+            background: rgba(239, 68, 68, 0.1);
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .config-success {
+            color: #22c55e;
+            font-size: 13px;
+            text-align: center;
+            margin-bottom: 15px;
+            display: none;
+            font-weight: bold;
+        }
+
+        .spinner {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 5px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h3 style="margin:0; font-size: 18px; letter-spacing: 0.5px;">TicketIQ Sync</h3>
+    </div>
+
+    <div class="content">
+        <!-- Auth Section -->
+        <div id="auth-section" style="display:none; width:100%;">
+            <svg style="width:48px; height:48px; color:#6366f1; margin:0 auto 15px auto; display:block;" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                </path>
+            </svg>
+            <p style="text-align:center; font-size:14px; color:#cbd5e1; margin-bottom:20px;">Connect your Gmail account
+                to sync support tickets to the dashboard.</p>
+            <button id="btn-auth" class="btn">Connect Gmail</button>
+        </div>
+
+        <!-- Sync Section -->
+        <div id="sync-section" style="display:none; width:100%; flex-direction: column;">
+
+            <div id="config-status" class="config-success">Watching: ...</div>
+            <div id="config-error" class="config-warning">No email configured on dashboard. Please go to Settings and
+                add your support email first.</div>
+
+            <div class="status-box">
+                <div
+                    style="font-size:12px; color:#94a3b8; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
+                    Last Synced</div>
+                <div id="last-synced" style="font-weight:bold; font-size:15px;">Never</div>
+            </div>
+
+            <button id="btn-sync" class="btn">Sync Now</button>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>
