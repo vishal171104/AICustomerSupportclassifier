@@ -7,11 +7,13 @@ import pickle
 import logging
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, validator
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 import pandas as pd
+
 
 # Add project root to sys.path
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,6 +34,14 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS logs
                  (timestamp TEXT, input_text TEXT, category TEXT, priority TEXT, 
                   cat_conf REAL, pri_conf REAL, latency_ms REAL)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS tickets
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                  subject TEXT, body TEXT, sender_email TEXT, 
+                  received_at TEXT, ingested_at TEXT, source TEXT, 
+                  predicted_label TEXT, priority TEXT, confidence_score REAL,
+                  status TEXT DEFAULT 'open')''')
+    c.execute('''CREATE TABLE IF NOT EXISTS config
+                 (watched_email TEXT, registered_at TEXT)''')
     conn.commit()
     conn.close()
 
@@ -153,49 +163,29 @@ def health():
 
 @app.get("/model_info")
 def model_info():
+    raw_params = category_pipeline.named_steps['tfidf'].get_params()
+    safe_params = {
+        k: v if isinstance(v, (int, float, bool, str, type(None))) else str(v)
+        for k, v in raw_params.items()
+    }
     return {
         "version": "2.1.0",
         "category_model": str(category_pipeline.named_steps['clf']),
         "priority_model": str(priority_pipeline.named_steps['clf']),
-        "tfidf_params": category_pipeline.named_steps['tfidf'].get_params()
+        "tfidf_params": safe_params
     }
+
+# Make sure the UI directory exists
+os.makedirs(BASE_DIR / "ui" / "dashboard", exist_ok=True)
+app.mount("/dashboard_assets", StaticFiles(directory=str(BASE_DIR / "ui" / "dashboard")), name="dashboard_assets")
 
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard():
-    conn = sqlite3.connect(DB_PATH)
-    df = pd.read_sql_query("SELECT * FROM logs ORDER BY timestamp DESC LIMIT 20", conn)
-    conn.close()
-    html_table = df.to_html(classes='table table-striped', index=False)
-    return f"""
-    <html>
-        <head>
-            <title>ML Observability Dashboard</title>
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-            <style>body {{ padding: 20px; background: #f8f9fa; }} .card {{ margin-bottom: 20px; }}</style>
-        </head>
-        <body>
-            <div class="container">
-                <h1 class="mb-4">🚀 Production ML Observability</h1>
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="card text-white bg-primary">
-                            <div class="card-body">
-                                <h5 class="card-title">Total Inferences</h5>
-                                <p class="card-text h2">{METRICS['total_predictions']}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="card mt-4">
-                    <div class="card-header">Latest Predictions</div>
-                    <div class="card-body" style="overflow-x: auto;">
-                        {html_table}
-                    </div>
-                </div>
-            </div>
-        </body>
-    </html>
-    """
+    index_path = BASE_DIR / "ui" / "dashboard" / "index.html"
+    if index_path.exists():
+        with open(index_path, "r") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse(content="<h1>Dashboard UI not built yet.</h1>", status_code=404)
 
 class Ticket(BaseModel):
     text: Optional[str] = None
@@ -230,6 +220,8 @@ def predict(ticket: Ticket):
             "priority_keywords": get_top_keywords(priority_pipeline, text, pri_pred),
             "latency_ms": round(latency, 2)
         }
+    except HTTPException:
+        raise
     except Exception as e:
         METRICS["error_count"] += 1
         raise HTTPException(status_code=500, detail=str(e))
@@ -241,6 +233,183 @@ def predict_batch(tickets: List[Ticket]):
         results.append(predict(t))
     return {"batch_results": results}
 
+class EmailConfig(BaseModel):
+    email: str
+
+class IngestEmail(BaseModel):
+    subject: str
+    body: str
+    sender_email: str
+    recipient_email: str
+    received_at: str
+    source: str = "gmail"
+
+@app.post("/api/config/email")
+def set_config_email(config: EmailConfig):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("DELETE FROM config")
+    c.execute("INSERT INTO config (watched_email, registered_at) VALUES (?, ?)", 
+              (config.email, time.strftime('%Y-%m-%dT%H:%M:%SZ')))
+    conn.commit()
+    conn.close()
+    return {"success": True, "email": config.email}
+
+@app.get("/api/config/email")
+def get_config_email():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT watched_email FROM config LIMIT 1")
+    row = c.fetchone()
+    conn.close()
+    if row and row[0]:
+        return {"email": row[0]}
+    return {"email": None}
+
+@app.delete("/api/config/email")
+def delete_config_email():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("DELETE FROM config")
+    conn.commit()
+    conn.close()
+    return {"success": True, "email": None}
+
+@app.post("/api/tickets/ingest")
+def ingest_tickets(emails: List[IngestEmail]):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT watched_email FROM config LIMIT 1")
+    row = c.fetchone()
+    watched_email = row[0] if row else None
+    
+    if not watched_email:
+        conn.close()
+        raise HTTPException(status_code=400, detail="No watched email configured.")
+        
+    ingested = 0
+    failed = 0
+    
+    for email in emails:
+        if email.recipient_email != watched_email:
+            continue
+        try:
+            raw_text = f"{email.subject} {email.body}"
+            text = clean_text(raw_text)
+            
+            cat_pred = category_pipeline.predict([text])[0]
+            cat_conf = float(np.max(category_pipeline.predict_proba([text])))
+            pri_pred = priority_pipeline.predict([text])[0]
+            pri_conf = float(np.max(priority_pipeline.predict_proba([text])))
+            
+            c.execute('''INSERT INTO tickets 
+                         (subject, body, sender_email, received_at, ingested_at, source, 
+                          predicted_label, priority, confidence_score) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                      (email.subject, email.body, email.sender_email, email.received_at, 
+                       time.strftime('%Y-%m-%dT%H:%M:%SZ'), email.source, 
+                       cat_pred, pri_pred, max(cat_conf, pri_conf)))
+            ingested += 1
+        except Exception as e:
+            failed += 1
+            logger.error(f"Ingestion error: {e}")
+            
+    conn.commit()
+    conn.close()
+    return {"ingested": ingested, "failed": failed}
+
+@app.get("/api/tickets")
+def get_tickets(sort: str = "Time (Newest First)", filter: str = "all", source: str = "all", search: str = "", status: str = "open"):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    
+    query = "SELECT * FROM tickets WHERE status = ?"
+    params = [status.lower()]
+    
+    if filter != "all":
+        query += " AND LOWER(priority) = ?"
+        params.append(filter.lower())
+        
+    if source != "all":
+        query += " AND LOWER(source) = ?"
+        params.append(source.lower())
+        
+    if search:
+        query += " AND (LOWER(subject) LIKE ? OR LOWER(body) LIKE ?)"
+        params.extend([f"%{search.lower()}%", f"%{search.lower()}%"])
+        
+    if sort == "Priority (High→Low)":
+        query += " ORDER BY CASE WHEN LOWER(priority)='critical' THEN 1 WHEN LOWER(priority)='high' THEN 2 WHEN LOWER(priority)='medium' THEN 3 ELSE 4 END ASC"
+    elif sort == "Priority (Low→High)":
+        query += " ORDER BY CASE WHEN LOWER(priority)='critical' THEN 1 WHEN LOWER(priority)='high' THEN 2 WHEN LOWER(priority)='medium' THEN 3 ELSE 4 END DESC"
+    elif sort == "Time (Oldest First)":
+        query += " ORDER BY ingested_at ASC, received_at ASC"
+    else: 
+        query += " ORDER BY ingested_at DESC, received_at DESC"
+        
+    c.execute(query, params)
+    rows = c.fetchall()
+    conn.close()
+    
+    return [dict(ix) for ix in rows]
+
+@app.get("/api/tickets/stats")
+def get_ticket_stats(status: str = "open"):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM tickets WHERE status = ?", (status.lower(),))
+    total = c.fetchone()[0]
+    
+    c.execute("SELECT LOWER(priority), COUNT(*) FROM tickets WHERE status = ? GROUP BY priority", (status.lower(),))
+    pri_counts = {row[0]: row[1] for row in c.fetchall()}
+    
+    c.execute("SELECT LOWER(source), COUNT(*) FROM tickets WHERE status = ? GROUP BY source", (status.lower(),))
+    src_counts = {row[0]: row[1] for row in c.fetchall()}
+    
+    c.execute("SELECT AVG(confidence_score) FROM tickets WHERE status = ?", (status.lower(),))
+    row = c.fetchone()
+    avg_conf = row[0] if row and row[0] is not None else 0.0
+    
+    c.execute("SELECT MAX(ingested_at) FROM tickets WHERE status = ?", (status.lower(),))
+    last_upd = c.fetchone()[0]
+    
+    conn.close()
+    
+    by_priority = {
+        "critical": pri_counts.get("critical", 0),
+        "high": pri_counts.get("high", 0),
+        "medium": pri_counts.get("medium", 0),
+        "low": pri_counts.get("low", 0)
+    }
+    
+    by_source = {
+        "gmail": src_counts.get("gmail", 0),
+        "manual": src_counts.get("manual", 0)
+    }
+    
+    return {
+        "total": total,
+        "by_priority": by_priority,
+        "by_source": by_source,
+        "avg_confidence": avg_conf,
+        "last_updated": last_upd
+    }
+
+class TicketStatusUpdate(BaseModel):
+    status: str
+
+@app.patch("/api/tickets/{ticket_id}/status")
+def update_ticket_status(ticket_id: int, status_update: TicketStatusUpdate):
+    if status_update.status.lower() not in ["open", "resolved"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+        
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("UPDATE tickets SET status = ? WHERE id = ?", (status_update.status.lower(), ticket_id))
+    conn.commit()
+    conn.close()
+    return {"success": True, "ticket_id": ticket_id, "status": status_update.status.lower()}
 
 if __name__ == "__main__":
     import uvicorn

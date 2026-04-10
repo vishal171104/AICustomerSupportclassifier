@@ -7,7 +7,7 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import VotingClassifier
 
-def create_pipeline(model_type="logreg", class_weight="balanced", ngram_range=(1, 2), max_features=5000, stop_words='english'):
+def create_pipeline(model_type="logreg", class_weight="balanced", ngram_range=(1, 3), max_features=5000, stop_words='english'):
     """
     Creates an sklearn Pipeline with customizable TF-IDF and Model.
     """
