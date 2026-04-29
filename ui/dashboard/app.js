@@ -1,9 +1,11 @@
 // State & Variables
+const UNCERTAINTY_THRESHOLD = 0.5; // combined entropy threshold for 'needs review'
 let currentEmail = null;
 let priorityChart = null;
 let tickets = [];
 let autoRefreshTimer = null;
 let isRefreshing = false;
+let driftDismissed = false;
 
 // DOM Elements
 const REFRESH_BTN = document.getElementById('refresh-btn');
@@ -65,7 +67,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (f === 'all') FILTER_PRI.value = 'all';
             else if (f === 'critical') FILTER_PRI.value = 'critical';
             else if (f === 'high') FILTER_PRI.value = 'high';
-            else if (f === 'lowmed') FILTER_PRI.value = 'all'; // Show all tickets when clicking Low/Med card
+            else if (f === 'lowmed') FILTER_PRI.value = 'all';
+            else if (f === 'uncertain') FILTER_PRI.value = 'uncertain';
             fetchData();
         });
     });
@@ -144,10 +147,17 @@ async function fetchData() {
         const search = SEARCH_INPUT.value;
         const status = FILTER_STATUS.value;
 
-        const params = new URLSearchParams({ sort, filter: pri, source: src, search, status });
         const statParams = new URLSearchParams({ status });
+        let ticketsFetch;
+        if (pri === 'uncertain') {
+            ticketsFetch = fetch('/api/tickets/uncertain');
+        } else {
+            const params = new URLSearchParams({ sort, filter: pri, source: src, search, status });
+            ticketsFetch = fetch(`/api/tickets?${params}`);
+        }
+
         const [ticketsRes, statsRes] = await Promise.all([
-            fetch(`/api/tickets?${params}`),
+            ticketsFetch,
             fetch(`/api/tickets/stats?${statParams}`)
         ]);
 
@@ -157,6 +167,7 @@ async function fetchData() {
         renderStats(stats);
         renderChart(stats);
         renderTable(tickets);
+        checkDrift();
     } catch (err) {
         console.error('Failed to fetch data', err);
         showToast('Connection error connecting to API', 'error');
@@ -168,6 +179,8 @@ function renderStats(stats) {
     document.getElementById('stat-critical').textContent = stats.by_priority.critical || 0;
     document.getElementById('stat-high').textContent = stats.by_priority.high || 0;
     document.getElementById('stat-lowmed').textContent = (stats.by_priority.medium + stats.by_priority.low) || 0;
+    const uncEl = document.getElementById('stat-uncertain');
+    if (uncEl) uncEl.textContent = stats.uncertain_count || 0;
 }
 
 function renderChart(stats) {
@@ -236,13 +249,24 @@ function renderTable(data) {
 
         const receivedStr = new Date(t.received_at || t.ingested_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+        const unc = t.uncertainty_score || 0;
+        const isUncertain = unc > UNCERTAINTY_THRESHOLD && !t.reviewed;
+        const confPct = Math.round((1 - Math.min(unc, 2.0) / 2.0) * 100);
+        const confBarColor = isUncertain ? 'bg-red-500' : 'bg-green-500';
+        const confTextColor = isUncertain ? 'text-red-600' : 'text-green-700';
+        const confLabel = isUncertain ? '&#9888; Low confidence' : '&#10003; High confidence';
+
         const statusView = FILTER_STATUS.value;
         let actionButtons = ``;
         if (statusView === 'open') {
+            const reviewBtn = isUncertain
+                ? `<button class="text-amber-500 hover:text-amber-700 p-1" onclick="reviewTicket(${t.id})" title="Mark Reviewed"><i class="fa-solid fa-user-check"></i></button>`
+                : '';
             actionButtons = `
                 <button class="text-accent hover:text-indigo-900 p-1" onclick="toggleExpand(${t.id})" title="View Details"><i class="fa-regular fa-eye"></i></button>
                 <button class="text-green-600 hover:text-green-900 p-1" onclick="resolveTicket(${t.id})" title="Resolve"><i class="fa-solid fa-check"></i></button>
                 <button class="text-red-500 hover:text-red-700 p-1" onclick="escalateTicket(${t.id})" title="Escalate"><i class="fa-solid fa-arrow-trend-up"></i></button>
+                ${reviewBtn}
             `;
         } else {
             actionButtons = `
@@ -253,7 +277,9 @@ function renderTable(data) {
 
         const tr = document.createElement('tr');
         tr.id = `ticket-row-${t.id}`;
-        tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+        tr.className = isUncertain
+            ? 'bg-amber-50 hover:bg-amber-100 transition border-b border-amber-200'
+            : 'hover:bg-slate-50 transition border-b border-slate-100';
         tr.innerHTML = `
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-semibold text-slate-700">${rowIdx + 1}</div>
@@ -307,6 +333,16 @@ function renderTable(data) {
                             </div>
                         </div>
                     </div>
+                    <div>
+                        <span class="font-semibold text-slate-700 block mb-1">Model Confidence:</span>
+                        <div class="flex items-center gap-3 mt-1">
+                            <div class="flex-1 bg-slate-200 rounded-full h-2">
+                                <div class="${confBarColor} h-2 rounded-full transition-all" style="width:${confPct}%"></div>
+                            </div>
+                            <span class="text-xs font-semibold ${confTextColor} whitespace-nowrap">${confPct}% &mdash; ${confLabel}</span>
+                        </div>
+                    </div>
+                    <div id="explanation-${t.id}" data-loaded="false"></div>
                 </div>
             </td>
         `;
@@ -318,9 +354,38 @@ function renderTable(data) {
 
 window.toggleExpand = function (id) {
     const el = document.getElementById(`expand-${id}`);
-    if (el) {
-        if (el.classList.contains('hidden')) el.classList.remove('hidden');
-        else el.classList.add('hidden');
+    if (!el) return;
+    if (el.classList.contains('hidden')) {
+        el.classList.remove('hidden');
+        // Lazy-load AI explanation on first expand only
+        const expDiv = document.getElementById(`explanation-${id}`);
+        if (expDiv && expDiv.dataset.loaded === 'false') {
+            fetchExplanation(id, expDiv);
+        }
+    } else {
+        el.classList.add('hidden');
+    }
+};
+
+async function fetchExplanation(id, container) {
+    container.dataset.loaded = 'loading';
+    container.innerHTML = `
+        <div class="mt-1 text-slate-400 italic" style="font-size:12px;">
+            <i class="fa-solid fa-spinner fa-spin mr-1"></i>Asking AI why this was classified here...
+        </div>`;
+    try {
+        const res = await fetch(`/api/tickets/${id}/explain`, { method: 'POST' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        container.innerHTML = `
+            <div style="border-left:3px solid #3B82F6;padding:8px 14px;background:#EFF6FF;border-radius:4px;margin-top:4px;">
+                <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:#1D4ED8;display:block;margin-bottom:4px;">AI Explanation</span>
+                <p style="font-size:13px;line-height:1.6;color:#1e3a5f;margin:0;">${data.explanation}</p>
+            </div>`;
+        container.dataset.loaded = 'true';
+    } catch (e) {
+        container.innerHTML = `<p style="color:#9ca3af;font-style:italic;font-size:12px;margin-top:4px;">Explanation unavailable.</p>`;
+        container.dataset.loaded = 'error';
     }
 }
 
@@ -354,6 +419,16 @@ window.reopenTicket = async function (id) {
 
 window.escalateTicket = function (id) {
     showToast(`Ticket #${id} escalated to human intervention queue!`, 'warning');
+};
+
+window.reviewTicket = async function (id) {
+    try {
+        await fetch(`/api/tickets/${id}/review`, { method: 'PATCH' });
+        showToast(`Ticket #${id} marked as reviewed`, 'success');
+        fetchData();
+    } catch (e) {
+        showToast('Error marking ticket as reviewed', 'error');
+    }
 };
 
 // Settings & Config
@@ -492,4 +567,32 @@ function showToast(message, type = 'info') {
         toast.style.opacity = '0';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+}
+
+async function checkDrift() {
+    if (driftDismissed) return;
+    try {
+        const res = await fetch('/api/drift/status');
+        const status = await res.json();
+        const banner = document.getElementById('drift-banner');
+        if (banner) {
+            if (status && status.alert === true) {
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
+
+            if (!banner.dataset.listenerAdded) {
+                const btn = banner.querySelector('button');
+                if (btn) {
+                    btn.addEventListener('click', () => {
+                        driftDismissed = true;
+                    });
+                }
+                banner.dataset.listenerAdded = 'true';
+            }
+        }
+    } catch (e) {
+        // Ignore errors
+    }
 }

@@ -12,8 +12,9 @@ What it does:
   3. Retrains the LR pipeline, saves versioned model
   4. Evaluates improvement vs. baseline
   5. Logs delta metrics to reports/feedback_improvement.csv
+  6. Tracks active learning efficiency and saves active_learning_report.csv
 """
-import sys, pickle, time, sqlite3, warnings
+import sys, pickle, time, sqlite3, warnings, datetime
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -66,6 +67,61 @@ def load_feedback():
         return pd.DataFrame()
 
 
+UNCERTAINTY_THRESHOLD = 0.5
+
+
+def query_active_learning_stats():
+    """
+    Pull active learning telemetry from predictions.db:
+      - total tickets reviewed by humans
+      - how many were high-uncertainty (uncertainty_score > threshold)
+      - how many human corrections were rejected by the model (accepted=0)
+    Returns a dict with all counts and the efficiency score.
+    """
+    stats = {
+        "total_reviews": 0,
+        "uncertain_reviews": 0,
+        "corrections_made": 0,
+        "efficiency_score": 0.0,
+    }
+    if not DB_PATH.exists():
+        return stats
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+
+        # Total tickets a human has reviewed
+        c.execute("SELECT COUNT(*) FROM tickets WHERE reviewed = 1")
+        stats["total_reviews"] = c.fetchone()[0]
+
+        # Of those, how many were flagged as high-uncertainty
+        c.execute(
+            "SELECT COUNT(*) FROM tickets WHERE reviewed = 1 AND uncertainty_score > ?",
+            (UNCERTAINTY_THRESHOLD,)
+        )
+        stats["uncertain_reviews"] = c.fetchone()[0]
+
+        # Human corrections stored in feedback (accepted=0 means the agent
+        # prediction was wrong and the human provided the correct label)
+        try:
+            c.execute("SELECT COUNT(*) FROM feedback WHERE accepted = 0")
+            stats["corrections_made"] = c.fetchone()[0]
+        except Exception:
+            stats["corrections_made"] = 0  # table may not exist yet
+
+        conn.close()
+    except Exception as e:
+        print(f"  [warn] Could not query active learning stats: {e}")
+        return stats
+
+    # Efficiency: fraction of reviews that actually needed a correction
+    if stats["total_reviews"] > 0:
+        stats["efficiency_score"] = round(
+            stats["corrections_made"] / stats["total_reviews"], 4
+        )
+    return stats
+
+
 def evaluate(pipe, X, y, task):
     scores = cross_val_score(pipe, X, y, cv=CV, scoring="f1_macro", n_jobs=-1)
     return scores.mean(), scores.std()
@@ -75,6 +131,16 @@ def run_retraining():
     print("\n" + "="*60)
     print("  FEEDBACK RETRAINING PIPELINE")
     print("="*60)
+
+    # ── Active Learning Telemetry ─────────────────────────────────
+    al_stats = query_active_learning_stats()
+    print(f"\n  [Active Learning Telemetry]")
+    print(f"    Total human reviews:       {al_stats['total_reviews']}")
+    print(f"    High-uncertainty reviews:  {al_stats['uncertain_reviews']}")
+    print(f"    Corrections made:          {al_stats['corrections_made']}")
+    print(f"    Active learning efficiency: "
+          f"{al_stats['efficiency_score']*100:.1f}% "
+          f"(of reviews that led to a correction)")
 
     # ── Load base data ────────────────────────────────────────────
     df_base = pd.read_csv(DATA_PATH)
@@ -103,6 +169,8 @@ def run_retraining():
     X_aug  = df_augmented["clean_text"].values
 
     results = []
+    # Store per-task F1 values for the active learning report
+    f1_by_task = {}  # {"Category": (base, aug, delta), "Priority": (base, aug, delta)}
 
     for task, col in [("Category", "category"), ("Priority", "priority")]:
         y_base = df_base[col].values
@@ -115,6 +183,8 @@ def run_retraining():
         aug_f1, aug_std = evaluate(make_pipeline(), X_aug, y_aug, task)
 
         delta = aug_f1 - base_f1
+        f1_by_task[task] = (round(base_f1, 4), round(aug_f1, 4), round(delta, 4))
+
         print(f"\n  [{task}]")
         print(f"    Baseline  F1 (5-CV): {base_f1:.4f} ± {base_std:.4f}")
         print(f"    Augmented F1 (5-CV): {aug_f1:.4f} ± {aug_std:.4f}")
@@ -138,13 +208,39 @@ def run_retraining():
             pickle.dump(pipe_full, f)
         print(f"    ✅ Model v2 saved → {v2_path.name}")
 
-    # ── Save results table ────────────────────────────────────────
+    # ── Save results table (existing) ─────────────────────────────
     results_df = pd.DataFrame(results)
     out_path = REPORTS_DIR / "feedback_improvement.csv"
     results_df.to_csv(out_path, index=False)
     print(f"\n  Results saved → {out_path}")
 
-    # ── Plot ─────────────────────────────────────────────────────
+    # ── Active Learning Report (append mode) ──────────────────────
+    cat_base, cat_aug, cat_delta = f1_by_task.get("Category", (0.0, 0.0, 0.0))
+    pri_base, pri_aug, pri_delta = f1_by_task.get("Priority", (0.0, 0.0, 0.0))
+
+    al_row = pd.DataFrame([{
+        "timestamp":          datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "baseline_cat_f1":    cat_base,
+        "augmented_cat_f1":   cat_aug,
+        "cat_f1_delta":       cat_delta,
+        "baseline_pri_f1":    pri_base,
+        "augmented_pri_f1":   pri_aug,
+        "pri_f1_delta":       pri_delta,
+        "total_reviews":      al_stats["total_reviews"],
+        "uncertain_reviews":  al_stats["uncertain_reviews"],
+        "corrections_made":   al_stats["corrections_made"],
+        "efficiency_score":   al_stats["efficiency_score"],
+    }])
+
+    al_report_path = REPORTS_DIR / "active_learning_report.csv"
+    if al_report_path.exists():
+        al_row.to_csv(al_report_path, mode="a", header=False, index=False)
+    else:
+        al_row.to_csv(al_report_path, index=False)
+    print(f"  Active learning report → {al_report_path}")
+    print(f"  Efficiency score: {al_stats['efficiency_score']*100:.1f}%")
+
+    # ── Existing feedback_improvement plot ────────────────────────
     fig, ax = plt.subplots(figsize=(7, 4))
     tasks = results_df["Task"].values
     x = np.arange(len(tasks))
@@ -164,6 +260,47 @@ def run_retraining():
     plt.savefig(REPORTS_DIR / "feedback_improvement.png", dpi=150, bbox_inches="tight")
     plt.close()
     print("  Plot saved → feedback_improvement.png")
+
+    # ── Active Learning grouped bar chart ─────────────────────────
+    fig2, ax2 = plt.subplots(figsize=(8, 5))
+    al_tasks  = ["Category F1", "Priority F1"]
+    base_vals = [cat_base, pri_base]
+    aug_vals  = [cat_aug,  pri_aug]
+    x2 = np.arange(len(al_tasks))
+    w2 = 0.35
+
+    bars_b = ax2.bar(x2 - w2/2, base_vals, w2, label="Baseline",
+                     color="#7f8c8d", zorder=3)
+    bars_a = ax2.bar(x2 + w2/2, aug_vals,  w2, label="Augmented (+ Feedback)",
+                     color="#2980b9", zorder=3)
+
+    ax2.set_xticks(x2)
+    ax2.set_xticklabels(al_tasks, fontsize=12)
+    ax2.set_ylabel("Macro F1", fontsize=11)
+    ax2.set_ylim(0, 1.1)
+    ax2.set_title("F1 improvement from active learning feedback",
+                  fontweight="bold", fontsize=13)
+    ax2.legend(fontsize=10)
+    ax2.yaxis.grid(True, linestyle="--", alpha=0.6)
+    ax2.set_axisbelow(True)
+
+    for b in list(bars_b) + list(bars_a):
+        ax2.text(b.get_x() + b.get_width() / 2, b.get_height() + 0.012,
+                 f"{b.get_height():.3f}", ha="center", va="bottom", fontsize=10)
+
+    # Annotate deltas
+    for i, (bv, av) in enumerate(zip(base_vals, aug_vals)):
+        delta_v = av - bv
+        color = "#27ae60" if delta_v >= 0 else "#c0392b"
+        ax2.annotate(f"Δ {delta_v:+.3f}",
+                     xy=(x2[i] + w2/2, av + 0.04),
+                     ha="center", fontsize=9, color=color, fontweight="bold")
+
+    plt.tight_layout()
+    al_plot_path = REPORTS_DIR / "active_learning_improvement.png"
+    plt.savefig(al_plot_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"  Active learning plot → {al_plot_path}")
 
     print("\n" + "="*60)
     print("  ✅ Retraining complete")
