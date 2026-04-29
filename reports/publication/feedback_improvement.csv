@@ -1,0 +1,3 @@
+Task,Baseline F1,Baseline Std,Augmented F1,Augmented Std,Delta F1,Feedback Samples
+Category,0.9977,0.0028,0.9977,0.0028,0.0,0
+Priority,0.7299,0.0206,0.7299,0.0206,0.0,0

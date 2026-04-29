@@ -4,7 +4,7 @@
 An automated customer support triage system using hardened classical ML pipelines (SVM + Naive Bayes) with a full observability stack .
 
 ## 🌐 Live System
-[🔥 Interactive Research Dashboard](http://localhost:8501) | [📚 API Documentation](http://localhost:8000/docs)
+[🔥 Live Dashboard](http://localhost:8000/dashboard) | [📚 API Documentation](http://localhost:8000/docs)
 
 ---
 
@@ -41,13 +41,14 @@ An automated customer support triage system using hardened classical ML pipeline
 ```bash
 docker-compose up --build
 ```
-*This starts the FastAPI backend (8000) and Streamlit Research Dashboard (8501).*
+*This starts the FastAPI backend (8000) which also serves the web dashboard at `/dashboard`.*
 
 ## 🛠️ Technical Stack
 - **Core**: Python 3.10, Scikit-Learn Pipelines
-- **Observability**: SQLite, Streamlit, Plotly
+- **Observability**: SQLite, Plotly
 - **API**: FastAPI + Pydantic (w/ Alias support)
-- **Containerization**: Docker & Docker Compose
+- **Frontend**: HTML, TailwindCSS, Chart.js (served by FastAPI)
+- **Containerization**: Docker
 
 ---
 

@@ -1,0 +1,3 @@
+Actual,Predicted,Confidence,Text (first 120 chars)
+Technical,Account,0.664,Settings area returning 500 sometimes. Not consistent but happening today.
+Technical,Account,0.384,"I noticed the side section is showing inconsistencies on iOS. Also, but I have a billing question. Sorry for the trouble"

@@ -1,0 +1,5 @@
+Model,ECE
+Logistic Regression (LR),0.0715
+Multinomial NB,0.0486
+Linear SVM,0.0572
+Random Forest,0.0628
