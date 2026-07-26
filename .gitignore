@@ -50,3 +50,7 @@ test_results.txt
 model/*.pkl
 venv_prod/
 data/predictions.db
+*.db
+*.log
+*_log.txt
+

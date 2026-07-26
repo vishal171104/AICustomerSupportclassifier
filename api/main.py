@@ -261,7 +261,7 @@ async def rate_limit_middleware(request: Request, call_next):
     if client_ip in RATE_LIMITS:
         last_time, count = RATE_LIMITS[client_ip]
         if current_time - last_time < 60:
-            if count >= 30: # Relaxed slightly for testing
+            if count >= 200: # Raised for demo — simulation fires many requests
                 return JSONResponse(status_code=429, content={"detail": "Too many requests"})
             RATE_LIMITS[client_ip] = (last_time, count + 1)
         else:

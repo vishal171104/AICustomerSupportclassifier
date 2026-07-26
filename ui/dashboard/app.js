@@ -314,7 +314,7 @@ function renderTable(data) {
         trExp.id = `expand-${t.id}`;
         trExp.className = 'bg-slate-50 text-sm hidden'; // Use hidden utility class
         trExp.innerHTML = `
-            <td colspan="7" class="px-8 py-6 border-b border-slate-200">
+            <td colspan="8" class="px-8 py-6 border-b border-slate-200">
                 <div class="flex flex-col gap-4">
                     <div>
                         <span class="font-semibold text-slate-700 block mb-1">Raw Ticket Body:</span>

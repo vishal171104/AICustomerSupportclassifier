@@ -1,399 +1,356 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TicketIQ Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>TicketIQ – AI Customer Support Classifier</title>
+    <!-- ALL ASSETS LOCAL – FULLY OFFLINE -->
+    <script src="/dashboard_assets/tailwind.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        brand: '#0f172a',
-                        accent: '#6366f1',
-                        critical: '#ef4444',
-                        high: '#f97316',
-                        medium: '#eab308',
-                        low: '#22c55e'
+                        brand: '#0f172a', accent: '#6366f1',
+                        critical: '#ef4444', high: '#f97316',
+                        medium: '#eab308', low: '#22c55e'
                     }
                 }
             }
         }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="/dashboard_assets/chart.min.js"></script>
+    <link rel="stylesheet" href="/dashboard_assets/fontawesome/css/all.min.css">
     <style>
-        .expand-row {
-            display: none;
+        body { font-family: system-ui, -apple-system, sans-serif; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes slideInUp {
+            from { opacity:0; transform:translateY(16px); }
+            to   { opacity:1; transform:translateY(0); }
         }
-
-        .expand-row.open {
-            display: table-row;
+        @keyframes pulse-ring {
+            0%,100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.35); }
+            50%      { box-shadow: 0 0 0 8px rgba(99,102,241,0); }
         }
-
-        @keyframes spin {
-            100% {
-                transform: rotate(360deg);
-            }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        .ticket-new  { animation: slideInUp 0.35s ease-out; }
+        .live-dot    { width:8px;height:8px;border-radius:50%;background:#22c55e;
+                       display:inline-block;animation:pulse-ring 1.5s infinite; }
+        #email-indicator { cursor:pointer;transition:all .2s; }
+        #email-indicator:hover { opacity:.85;transform:scale(1.02); }
+        .stat-card { transition:all .25s ease; }
+        .stat-card:hover { transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.1); }
+        #demo-panel {
+            background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#1e1b4b 100%);
+            border:1px solid #4338ca;
         }
-
-        .spin {
-            animation: spin 1s linear infinite;
-        }
-
-        .toast-enter {
-            transform: translateY(100%);
-            opacity: 0;
-        }
-
-        .toast-enter-active {
-            transform: translateY(0);
-            opacity: 1;
-            transition: all 300ms ease-out;
-        }
-
-        .toast-exit {
-            transform: translateY(0);
-            opacity: 1;
-        }
-
-        .toast-exit-active {
-            transform: translateY(100%);
-            opacity: 0;
-            transition: all 300ms ease-in;
-        }
-
-        #email-indicator {
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        #email-indicator:hover {
-            opacity: 0.85;
-            transform: scale(1.02);
-        }
+        .classify-badge { animation:fadeIn .4s ease-out; }
     </style>
 </head>
+<body class="bg-slate-100 text-slate-900 min-h-screen">
 
-<body class="bg-slate-100 text-slate-900 font-sans min-h-screen">
-
-    <!-- Header -->
-    <header class="bg-brand text-white shadow-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                <div class="flex items-center space-x-4">
-                    <i class="fa-solid fa-layer-group text-accent text-2xl"></i>
-                    <span class="font-bold text-xl tracking-wide">TicketIQ Dashboard</span>
-
-                    <!-- Email Badge - clickable, updates dynamically -->
-                    <div id="email-indicator"
-                        class="ml-6 px-3 py-1 rounded-full text-xs font-semibold bg-red-500 text-white"
-                        onclick="openSettings()" title="Click to configure your support email">
-                        <i class="fa-solid fa-circle-exclamation mr-1"></i>
-                        <span id="email-badge-text">No email configured</span>
-                    </div>
-                </div>
-
-                <div class="flex items-center space-x-6">
-                    <!-- Live Clock - fixed to use browser local time -->
-                    <div class="text-slate-300 text-sm font-mono" id="live-clock">00:00:00</div>
-
-                    <div class="flex items-center space-x-2 text-sm">
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="auto-refresh-toggle" class="sr-only peer">
-                            <div
-                                class="w-9 h-5 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent">
-                            </div>
-                            <span class="ml-2 text-slate-300">Auto</span>
-                        </label>
-                    </div>
-
-                    <button id="refresh-btn"
-                        class="bg-accent hover:bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium transition flex items-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                        <i class="fa-solid fa-rotate-right mr-2" id="refresh-icon"></i> Refresh
-                    </button>
-
-                    <button class="text-slate-300 hover:text-white transition" onclick="openSettings()"
-                        title="Settings">
-                        <i class="fa-solid fa-gear text-lg"></i>
-                    </button>
-                </div>
-            </div>
+<!-- ── HEADER ── -->
+<header class="bg-brand text-white shadow-lg">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16 items-center">
+      <div class="flex items-center space-x-3">
+        <i class="fa-solid fa-layer-group text-accent text-2xl"></i>
+        <span class="font-bold text-xl tracking-wide">TicketIQ</span>
+        <span class="text-slate-400 text-sm hidden sm:inline">AI Support Classifier</span>
+        <div id="email-indicator"
+             class="ml-4 px-3 py-1 rounded-full text-xs font-semibold bg-red-500 text-white flex items-center gap-1"
+             onclick="openSettings()" title="Configure email">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span id="email-badge-text">No email configured</span>
         </div>
-    </header>
+      </div>
+      <div class="flex items-center space-x-3">
+        <div class="text-slate-300 text-sm font-mono" id="live-clock">00:00:00</div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="auto-refresh-toggle" class="sr-only peer">
+          <div class="w-9 h-5 bg-slate-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent"></div>
+          <span class="ml-2 text-slate-300 text-sm">Auto</span>
+        </label>
+        <button id="refresh-btn"
+          class="bg-accent hover:bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium transition flex items-center gap-2 shadow-sm disabled:opacity-50">
+          <i class="fa-solid fa-rotate-right" id="refresh-icon"></i> Refresh
+        </button>
+        <button id="demo-btn" onclick="toggleDemoPanel()"
+          class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-bold transition flex items-center gap-2 shadow-sm">
+          <span class="live-dot"></span> Live Demo
+        </button>
+        <button onclick="openSettings()" class="text-slate-300 hover:text-white transition" title="Settings">
+          <i class="fa-solid fa-gear text-lg"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
 
-    <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        <!-- Drift Detection Banner -->
-        <div id="drift-banner"
-            class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 mb-6 rounded-md shadow-sm relative">
-            <div class="flex items-center">
-                <i class="fa-solid fa-triangle-exclamation text-xl mr-3"></i>
-                <span class="font-medium">Model drift detected — incoming tickets look different from training data.
-                    Consider retraining.</span>
-            </div>
-            <button onclick="document.getElementById('drift-banner').classList.add('hidden')"
-                class="absolute top-4 right-4 text-yellow-600 hover:text-yellow-800 transition">
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
+<!-- ── LIVE DEMO PANEL ── -->
+<div id="demo-panel" class="hidden mx-auto px-4 sm:px-6 lg:px-8 py-4 mt-3 rounded-xl text-white" style="max-width:80rem;margin-left:auto;margin-right:auto;">
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-3">
+      <span class="live-dot"></span>
+      <h2 class="text-lg font-bold">Live Demo Mode</h2>
+      <span class="text-emerald-400 text-sm hidden sm:inline">— Real ML model, 100% offline</span>
+    </div>
+    <button onclick="toggleDemoPanel()" class="text-slate-400 hover:text-white transition">
+      <i class="fa-solid fa-xmark text-xl"></i>
+    </button>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <!-- Manual Classify -->
+    <div class="bg-white/10 rounded-xl p-5 backdrop-blur-sm">
+      <h3 class="font-semibold text-white mb-3 flex items-center gap-2">
+        <i class="fa-solid fa-keyboard text-indigo-300"></i> Type a Ticket — Classify Live
+      </h3>
+      <textarea id="demo-input" rows="4"
+        class="w-full bg-slate-900/60 text-white rounded-lg p-3 text-sm border border-indigo-500/40 focus:border-indigo-400 outline-none resize-none placeholder-slate-500"
+        placeholder="e.g. Payment gateway is completely broken since 2 hours..."></textarea>
+      <div class="flex flex-wrap gap-2 mt-3">
+        <button onclick="classifyDemoInput()" id="classify-btn"
+          class="bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+          <i class="fa-solid fa-brain"></i> Classify
+        </button>
+        <button onclick="injectDemoInput()" id="inject-btn"
+          class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+          <i class="fa-solid fa-paper-plane"></i> Submit as Ticket
+        </button>
+        <button onclick="loadSampleText()"
+          class="bg-slate-700 hover:bg-slate-600 text-slate-300 px-4 py-2 rounded-lg text-sm transition flex items-center gap-2">
+          <i class="fa-solid fa-dice"></i> Sample
+        </button>
+      </div>
+      <div id="classify-result" class="hidden mt-4 p-4 rounded-lg bg-slate-900/50 border border-indigo-400/30">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <div class="text-xs text-indigo-300 uppercase tracking-wider mb-1">Category</div>
+            <div id="res-category" class="text-base font-bold text-white classify-badge"></div>
+            <div class="text-xs text-slate-400 mt-1">Conf: <span id="res-cat-conf" class="text-emerald-400 font-semibold"></span></div>
+          </div>
+          <div>
+            <div class="text-xs text-orange-300 uppercase tracking-wider mb-1">Priority</div>
+            <div id="res-priority" class="text-base font-bold classify-badge"></div>
+            <div class="text-xs text-slate-400 mt-1">Conf: <span id="res-pri-conf" class="text-emerald-400 font-semibold"></span></div>
+          </div>
         </div>
-
-        <!-- Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-            <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-slate-700 cursor-pointer hover:shadow-md transition card-filter"
-                data-filter="all">
-                <div class="text-sm font-medium text-slate-500 mb-1">Total Tickets</div>
-                <div class="text-3xl font-bold text-slate-800" id="stat-total">0</div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-critical cursor-pointer hover:shadow-md transition card-filter"
-                data-filter="critical">
-                <div class="text-sm font-medium text-slate-500 mb-1 flex items-center justify-between">
-                    Critical <i class="fa-solid fa-circle text-xs text-critical"></i>
-                </div>
-                <div class="text-3xl font-bold text-slate-800" id="stat-critical">0</div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-high cursor-pointer hover:shadow-md transition card-filter"
-                data-filter="high">
-                <div class="text-sm font-medium text-slate-500 mb-1 flex items-center justify-between">
-                    High <i class="fa-solid fa-circle text-xs text-high"></i>
-                </div>
-                <div class="text-3xl font-bold text-slate-800" id="stat-high">0</div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-low cursor-pointer hover:shadow-md transition card-filter"
-                data-filter="lowmed">
-                <div class="text-sm font-medium text-slate-500 mb-1 flex items-center justify-between">
-                    Low / Med <i class="fa-solid fa-circle text-xs text-low"></i>
-                </div>
-                <div class="text-3xl font-bold text-slate-800" id="stat-lowmed">0</div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-amber-500 cursor-pointer hover:shadow-md transition card-filter"
-                data-filter="uncertain">
-                <div class="text-sm font-medium text-slate-500 mb-1 flex items-center justify-between">
-                    Needs Review <i class="fa-solid fa-triangle-exclamation text-xs text-amber-500"></i>
-                </div>
-                <div class="text-3xl font-bold text-amber-600" id="stat-uncertain">0</div>
-            </div>
+        <div class="mt-3 pt-3 border-t border-white/10 text-xs text-slate-400">
+          Keywords: <span id="res-keywords" class="text-indigo-300 font-mono"></span>
+          &nbsp;·&nbsp; Latency: <span id="res-latency" class="text-emerald-400 font-semibold"></span>ms
         </div>
-
-        <div class="flex flex-col lg:flex-row gap-8">
-
-            <!-- Table Section -->
-            <div class="lg:w-3/4 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
-                <!-- Toolbar -->
-                <div
-                    class="p-4 border-b border-slate-100 bg-slate-50 flex flex-wrap gap-4 items-center justify-between">
-                    <div class="flex gap-3">
-                        <select id="filter-status"
-                            class="text-sm border-slate-300 rounded-md shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 px-3 py-2 bg-white form-select font-semibold text-accent">
-                            <option value="open">Status: Open</option>
-                            <option value="resolved">Status: Resolved</option>
-                        </select>
-                        <select id="filter-sort"
-                            class="text-sm border-slate-300 rounded-md shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 px-3 py-2 bg-white form-select">
-                            <option value="Time (Newest First)">Sort by: Newest</option>
-                            <option value="Time (Oldest First)">Sort by: Oldest</option>
-                            <option value="Priority (High→Low)">Sort by: Priority (High→Low)</option>
-                            <option value="Priority (Low→High)">Sort by: Priority (Low→High)</option>
-                        </select>
-                        <select id="filter-priority"
-                            class="text-sm border-slate-300 rounded-md shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 px-3 py-2 bg-white form-select">
-                            <option value="all">All Priorities</option>
-                            <option value="critical">Critical</option>
-                            <option value="high">High</option>
-                            <option value="medium">Medium</option>
-                            <option value="low">Low</option>
-                            <option value="uncertain">&#9888; Uncertain</option>
-                        </select>
-                        <select id="filter-source"
-                            class="text-sm border-slate-300 rounded-md shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 px-3 py-2 bg-white form-select">
-                            <option value="all">All Sources</option>
-                            <option value="gmail">Gmail</option>
-                            <option value="manual">Manual</option>
-                        </select>
-                    </div>
-                    <div class="relative flex-1 max-w-xs">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
-                        </div>
-                        <input type="text" id="search-input"
-                            class="text-sm border-slate-300 rounded-md shadow-sm focus:border-accent focus:ring focus:ring-accent focus:ring-opacity-50 pl-10 pr-3 py-2 w-full"
-                            placeholder="Search subject or body...">
-                    </div>
-                </div>
-
-                <!-- Table -->
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-slate-200">
-                        <thead class="bg-slate-50">
-                            <tr>
-                                <th scope="col"
-                                    class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                    #</th>
-                                <th scope="col"
-                                    class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                    Subject & Sender</th>
-                                <th scope="col"
-                                    class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                    Received</th>
-                                <th scope="col"
-                                    class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider text-center">
-                                    Source</th>
-                                <th scope="col"
-                                    class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                    Priority</th>
-                                <th scope="col"
-                                    class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                    Confidence</th>
-                                <th scope="col"
-                                    class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                    Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ticket-table-body" class="bg-white divide-y divide-slate-200">
-                            <!-- Rows injected by JS -->
-                        </tbody>
-                    </table>
-
-                    <!-- Empty State -->
-                    <div id="empty-state"
-                        class="hidden py-16 px-6 text-center flex flex-col items-center justify-center">
-                        <img src="https://cdni.iconscout.com/illustration/premium/thumb/folder-is-empty-illustration-download-in-svg-png-gif-file-formats--no-data-record-file-found-miscellaneous-pack-illustrations-3139368.png"
-                            alt="Empty Box" class="h-48 w-48 object-contain mb-4 opacity-75">
-                        <h3 class="text-lg font-medium text-slate-900">No tickets yet.</h3>
-                        <p class="mt-1 text-sm text-slate-500" id="empty-message">Connect Gmail and click Sync to
-                            begin.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Chart Section -->
-            <div class="lg:w-1/4">
-                <div class="bg-white p-6 rounded-xl shadow-sm mb-6">
-                    <h3 class="text-slate-800 font-semibold mb-4 text-center">Priority Distribution</h3>
-                    <div class="relative h-64 w-full">
-                        <canvas id="priorityChart"></canvas>
-                        <div id="chart-empty" class="absolute inset-0 flex items-center justify-center hidden">
-                            <span class="text-sm font-medium text-slate-400">No data yet</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </main>
-
-    <!-- Settings Modal -->
-    <div id="settings-modal"
-        class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <h3 class="text-lg font-semibold text-slate-800"><i class="fa-solid fa-gear mr-2"></i> Settings</h3>
-                <button onclick="closeSettings()" class="text-slate-400 hover:text-slate-600 transition">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            <div class="p-6">
-                <label class="block text-sm font-medium text-slate-700 mb-2">Connected Support Email</label>
-                <p class="text-xs text-slate-500 mb-4">The Chrome extension will only sync emails sent directly to this
-                    address.</p>
-
-                <div class="flex rounded-md shadow-sm">
-                    <span
-                        class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-slate-300 bg-slate-50 text-slate-500 text-sm">
-                        <i class="fa-regular fa-envelope"></i>
-                    </span>
-                    <input type="email" id="settings-email"
-                        class="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md border border-slate-300 focus:ring-accent focus:border-accent sm:text-sm"
-                        placeholder="support@yourcompany.com">
-                </div>
-
-                <div class="mt-6 flex justify-between">
-                    <button id="btn-remove-email"
-                        class="text-critical hover:bg-red-50 px-3 py-2 rounded text-sm font-medium transition disabled:opacity-50">Remove</button>
-                    <div class="flex space-x-3">
-                        <button onclick="closeSettings()"
-                            class="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded cursor-pointer text-sm font-medium transition">Cancel</button>
-                        <button id="btn-save-email"
-                            class="bg-accent text-white hover:bg-indigo-600 px-4 py-2 rounded text-sm font-medium transition flex items-center">
-                            Save Email
-                        </button>
-                    </div>
-                </div>
-                <p class="text-xs text-slate-400 mt-4 pt-3 border-t border-slate-100">
-                    <i class="fa-solid fa-circle-info mr-1 text-blue-400"></i>
-                    AI explanations use the Claude API. Set
-                    <code class="bg-slate-100 px-1 rounded font-mono text-slate-600">ANTHROPIC_API_KEY</code>
-                    in your environment to enable.
-                </p>
-            </div>
-        </div>
+      </div>
     </div>
 
-    <!-- Toast Container -->
-    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+    <!-- Auto-Simulate -->
+    <div class="bg-white/10 rounded-xl p-5 backdrop-blur-sm">
+      <h3 class="font-semibold text-white mb-3 flex items-center gap-2">
+        <i class="fa-solid fa-robot text-emerald-300"></i> Auto-Simulate Email Arrival
+      </h3>
+      <p class="text-slate-300 text-sm mb-4">Watch realistic support emails arrive and get classified by the real ML model in real time.</p>
+      <div class="flex flex-wrap gap-2 mb-4">
+        <button id="sim-start-btn" onclick="startSimulation()"
+          class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+          <i class="fa-solid fa-play"></i> Start Simulation
+        </button>
+        <button id="sim-stop-btn" onclick="stopSimulation()" disabled
+          class="bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 disabled:opacity-40">
+          <i class="fa-solid fa-stop"></i> Stop
+        </button>
+        <select id="sim-speed" class="bg-slate-800 text-white text-sm rounded-lg px-3 py-2 border border-indigo-500/30">
+          <option value="3000">Slow (3s)</option>
+          <option value="1500" selected>Normal (1.5s)</option>
+          <option value="800">Fast (0.8s)</option>
+        </select>
+      </div>
+      <div id="sim-status" class="text-sm text-slate-400 font-mono bg-slate-900/50 rounded-lg p-3 h-24 overflow-y-auto border border-indigo-400/20 leading-relaxed">
+        <span class="text-emerald-400">System ready.</span> Click "Start Simulation" to begin...
+      </div>
+    </div>
+  </div>
+</div>
 
-    <!-- ✅ FIX 1: Clock using browser local time, no server needed -->
-    <script>
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('live-clock').textContent = now.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-            });
-        }
-        updateClock();
-        setInterval(updateClock, 1000);
+<!-- ── MAIN CONTENT ── -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-        // ✅ FIX 2: Email badge - fetch from backend and update color + text
-        async function updateEmailBadge() {
-            try {
-                const res = await fetch('/api/config/email');
-                const data = await res.json();
-                const badge = document.getElementById('email-indicator');
-                const badgeText = document.getElementById('email-badge-text');
-                const icon = badge.querySelector('i');
+  <!-- Drift Banner -->
+  <div id="drift-banner" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 mb-5 rounded-md shadow-sm relative">
+    <div class="flex items-center">
+      <i class="fa-solid fa-triangle-exclamation text-xl mr-3"></i>
+      <span class="font-medium">Model drift detected — incoming tickets differ from training data. Consider retraining.</span>
+    </div>
+    <button onclick="document.getElementById('drift-banner').classList.add('hidden')"
+      class="absolute top-4 right-4 text-yellow-600 hover:text-yellow-800">
+      <i class="fa-solid fa-xmark text-lg"></i>
+    </button>
+  </div>
 
-                if (data.email) {
-                    badge.classList.remove('bg-red-500');
-                    badge.classList.add('bg-green-500');
-                    icon.className = 'fa-solid fa-circle-check mr-1';
-                    badgeText.textContent = 'Watching: ' + data.email;
-                    badge.title = 'Click to change your support email';
-                } else {
-                    badge.classList.remove('bg-green-500');
-                    badge.classList.add('bg-red-500');
-                    icon.className = 'fa-solid fa-circle-exclamation mr-1';
-                    badgeText.textContent = 'No email configured';
-                    badge.title = 'Click to configure your support email';
-                }
-            } catch (e) {
-                // If API not reachable yet, keep default red state
-                console.warn('Could not fetch email config:', e);
-            }
-        }
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-5">
+    <div class="stat-card bg-white rounded-xl shadow-sm p-5 border-l-4 border-slate-600 cursor-pointer card-filter" data-filter="all">
+      <div class="text-xs font-medium text-slate-500 mb-1">Total Open</div>
+      <div class="text-3xl font-bold text-slate-800" id="stat-total">0</div>
+    </div>
+    <div class="stat-card bg-white rounded-xl shadow-sm p-5 border-l-4 border-red-500 cursor-pointer card-filter" data-filter="critical">
+      <div class="text-xs font-medium text-slate-500 mb-1 flex justify-between">Critical <i class="fa-solid fa-circle text-red-500 text-xs"></i></div>
+      <div class="text-3xl font-bold text-slate-800" id="stat-critical">0</div>
+    </div>
+    <div class="stat-card bg-white rounded-xl shadow-sm p-5 border-l-4 border-orange-400 cursor-pointer card-filter" data-filter="high">
+      <div class="text-xs font-medium text-slate-500 mb-1 flex justify-between">High <i class="fa-solid fa-circle text-orange-400 text-xs"></i></div>
+      <div class="text-3xl font-bold text-slate-800" id="stat-high">0</div>
+    </div>
+    <div class="stat-card bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500 cursor-pointer card-filter" data-filter="lowmed">
+      <div class="text-xs font-medium text-slate-500 mb-1 flex justify-between">Low / Med <i class="fa-solid fa-circle text-green-500 text-xs"></i></div>
+      <div class="text-3xl font-bold text-slate-800" id="stat-lowmed">0</div>
+    </div>
+    <div class="stat-card bg-white rounded-xl shadow-sm p-5 border-l-4 border-amber-400 cursor-pointer card-filter" data-filter="uncertain">
+      <div class="text-xs font-medium text-slate-500 mb-1 flex justify-between">Needs Review <i class="fa-solid fa-triangle-exclamation text-amber-400 text-xs"></i></div>
+      <div class="text-3xl font-bold text-amber-600" id="stat-uncertain">0</div>
+    </div>
+  </div>
 
-        // ✅ FIX 3: openSettings auto-focuses the email input
-        function openSettings() {
-            document.getElementById('settings-modal').classList.remove('hidden');
-            setTimeout(() => {
-                document.getElementById('settings-email').focus();
-            }, 100);
-        }
+  <div class="flex flex-col lg:flex-row gap-5">
+    <!-- Table -->
+    <div class="lg:w-3/4 bg-white rounded-xl shadow-sm overflow-hidden">
+      <!-- Toolbar -->
+      <div class="p-4 border-b border-slate-100 bg-slate-50 flex flex-wrap gap-3 items-center justify-between">
+        <div class="flex gap-2 flex-wrap">
+          <select id="filter-status" class="text-sm border border-slate-300 rounded-md px-3 py-2 bg-white font-semibold text-accent">
+            <option value="open">Status: Open</option>
+            <option value="resolved">Status: Resolved</option>
+          </select>
+          <select id="filter-sort" class="text-sm border border-slate-300 rounded-md px-3 py-2 bg-white">
+            <option value="Time (Newest First)">Sort: Newest</option>
+            <option value="Time (Oldest First)">Sort: Oldest</option>
+            <option value="Priority (High→Low)">Sort: Priority ↓</option>
+            <option value="Priority (Low→High)">Sort: Priority ↑</option>
+          </select>
+          <select id="filter-priority" class="text-sm border border-slate-300 rounded-md px-3 py-2 bg-white">
+            <option value="all">All Priorities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+            <option value="uncertain">&#9888; Uncertain</option>
+          </select>
+          <select id="filter-source" class="text-sm border border-slate-300 rounded-md px-3 py-2 bg-white">
+            <option value="all">All Sources</option>
+            <option value="gmail">Gmail</option>
+            <option value="manual">Manual</option>
+            <option value="demo">Demo</option>
+          </select>
+        </div>
+        <div class="relative flex-1 max-w-xs">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
+          </div>
+          <input type="text" id="search-input"
+            class="text-sm border border-slate-300 rounded-md pl-10 pr-3 py-2 w-full"
+            placeholder="Search subject or body...">
+        </div>
+      </div>
+      <!-- Table body -->
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">#</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Subject & Sender</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Received</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase">Src</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Category</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Priority</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Confidence</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ticket-table-body" class="bg-white divide-y divide-slate-200"></tbody>
+        </table>
+        <div id="empty-state" class="hidden py-16 text-center">
+          <i class="fa-solid fa-inbox text-slate-300 text-6xl mb-4 block"></i>
+          <h3 class="text-lg font-medium text-slate-500">No tickets yet</h3>
+          <p class="mt-1 text-sm text-slate-400" id="empty-message">Click "Live Demo" above to simulate incoming emails.</p>
+        </div>
+      </div>
+    </div>
 
-        function closeSettings() {
-            document.getElementById('settings-modal').classList.add('hidden');
-        }
+    <!-- Sidebar -->
+    <div class="lg:w-1/4 flex flex-col gap-4">
+      <div class="bg-white p-5 rounded-xl shadow-sm">
+        <h3 class="text-slate-800 font-semibold mb-3 text-center text-sm">Priority Distribution</h3>
+        <div class="relative h-56">
+          <canvas id="priorityChart"></canvas>
+          <div id="chart-empty" class="absolute inset-0 flex items-center justify-center hidden">
+            <span class="text-sm text-slate-400">No data yet</span>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white p-5 rounded-xl shadow-sm">
+        <h3 class="text-slate-800 font-semibold mb-3 text-sm flex items-center gap-2">
+          <i class="fa-solid fa-microchip text-indigo-500"></i> Model Info
+        </h3>
+        <div class="space-y-2 text-xs">
+          <div class="flex justify-between"><span class="text-slate-400">Algorithm</span><span class="font-medium">TF-IDF + LogReg</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Categories</span><span class="font-medium">3 classes</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Priorities</span><span class="font-medium">4 levels</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Training set</span><span class="font-medium">1,083 tickets</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Avg accuracy</span><span class="font-medium text-green-600">~89%</span></div>
+          <div class="flex justify-between"><span class="text-slate-400">Status</span><span class="text-green-600 font-semibold">● Offline ready</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
 
-        // Run badge update on page load
-        updateEmailBadge();
-    </script>
+<!-- Settings Modal -->
+<div id="settings-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden flex items-center justify-center z-50">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
+      <h3 class="text-lg font-semibold text-slate-800"><i class="fa-solid fa-gear mr-2"></i>Settings</h3>
+      <button onclick="closeSettings()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <div class="p-6">
+      <label class="block text-sm font-medium text-slate-700 mb-2">Connected Support Email</label>
+      <p class="text-xs text-slate-500 mb-4">The system will only process emails sent to this address.</p>
+      <div class="flex rounded-md shadow-sm">
+        <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-slate-300 bg-slate-50 text-slate-500 text-sm">
+          <i class="fa-regular fa-envelope"></i>
+        </span>
+        <input type="email" id="settings-email"
+          class="flex-1 block w-full px-3 py-2 rounded-r-md border border-slate-300 sm:text-sm"
+          placeholder="support@yourcompany.com">
+      </div>
+      <div class="mt-6 flex justify-between">
+        <button id="btn-remove-email" class="text-red-500 hover:bg-red-50 px-3 py-2 rounded text-sm font-medium">Remove</button>
+        <div class="flex space-x-3">
+          <button onclick="closeSettings()" class="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded text-sm font-medium">Cancel</button>
+          <button id="btn-save-email" class="bg-accent text-white hover:bg-indigo-600 px-4 py-2 rounded text-sm font-medium">Save Email</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-    <script src="/dashboard_assets/app.js"></script>
+<!-- Toast Container -->
+<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+<script>
+    function updateClock() {
+        document.getElementById('live-clock').textContent =
+            new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+    }
+    updateClock(); setInterval(updateClock, 1000);
+
+    function openSettings() {
+        document.getElementById('settings-modal').classList.remove('hidden');
+        setTimeout(()=>document.getElementById('settings-email').focus(),100);
+    }
+    function closeSettings() {
+        document.getElementById('settings-modal').classList.add('hidden');
+    }
+</script>
+<script src="/dashboard_assets/app.js"></script>
+<script src="/dashboard_assets/demo.js"></script>
 </body>
-
 </html>
