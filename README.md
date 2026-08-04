@@ -3,8 +3,19 @@
 
 An automated customer support triage system using hardened classical ML pipelines (SVM + Naive Bayes) with a full observability stack .
 
-## 🌐 Live System
-[🔥 Live Dashboard](http://localhost:8000/dashboard) | [📚 API Documentation](http://localhost:8000/docs)
+## 🌐 Run it locally
+
+There is no hosted deployment — bring the stack up with one command and the
+dashboard and interactive API docs are served from the same FastAPI process:
+
+```bash
+docker-compose up --build
+```
+
+| Surface | URL (after the command above) |
+|---|---|
+| 🔥 Dashboard | `http://localhost:8000/dashboard` |
+| 📚 API docs (Swagger) | `http://localhost:8000/docs` |
 
 ---
 
@@ -67,9 +78,10 @@ Send a POST request to `/predict` with a JSON body:
 ## Constraints & Notes
 - This system uses optimized classical models for efficiency and interpretability.
 - Deep Learning (BERT, etc.) is included as a comparative benchmark but classical models are prioritized for production stability.
-- No production deployment 
+- No production deployment is claimed — this is a research project, run locally.
 
+---
+
+## Demo
 
 https://github.com/user-attachments/assets/d16e4534-9438-4d7e-bdb6-e177661bb362
-
-is claimed.
